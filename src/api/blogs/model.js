@@ -34,9 +34,9 @@ const blogPostSchema = new Schema(
         required: true,
         validate: {
           validator: function (unit) {
-            return ["seconds", "minutes", "hours"].includes(unit);
+            return ["minutes", "hours", "day"].includes(unit);
           },
-          message: "Unit must be one of 'seconds', 'minutes', or 'hours'",
+          message: "Unit must be one of 'day', 'minutes', or 'hours'",
         },
       },
     },
@@ -55,10 +55,20 @@ const blogPostSchema = new Schema(
       },
     },
     content: { type: String },
+    comments: [
+      {
+        authorName: { type: String, required: true },
+        comment: { type: String, required: true },
+        createdAt: Date,
+        updatedAt: Date,
+      },
+    ],
   },
+
   {
     timestamps: true, // this option automatically handles the createdAt and updatedAt fields
   }
 );
 
-export default model("BlogPosts", blogPostSchema); // this model is now automagically linked to the "BlogPosts" collection, if the collection does not exist it will be created
+export default model("BlogPosts", blogPostSchema);
+// this model is now automagically linked to the "BlogPosts" collection, if the collection does not exist it will be created

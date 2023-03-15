@@ -1,6 +1,7 @@
 import Express from "express";
 import createHttpError from "http-errors";
 import blogPostModel from "./model.js";
+import q2m from "query-to-mongo";
 
 const blogsRouter = Express.Router();
 
@@ -79,6 +80,77 @@ blogsRouter.delete("/:blogId", async (req, res, next) => {
       next(
         createHttpError(404, `Blog with id ${req.params.blogId} not found!`)
       );
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+blogsRouter.post("/:blogId/comments", async (req, res, next) => {
+  try {
+    const blog = await blogPostModel.findById(req.params.blogId);
+    if (blog) {
+      const newComment = req.body;
+      const commentToInsert = {
+        ...newComment,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      console.log("commentToInsert", commentToInsert);
+      const updatedBlog = await blogPostModel.findByIdAndUpdate(
+        req.params.blogId,
+        {
+          $push: { comments: commentToInsert },
+        },
+        { new: true, runValidators: true }
+      );
+      console.log("updatedBlog", updatedBlog);
+      if (updatedBlog) {
+        res.send(updatedBlog);
+      } else {
+        next(createHttpError(404, `Blog has not comments`));
+      }
+    } else {
+      next(
+        createHttpError(404, `Blog with id ${req.params.blogId} not found!`)
+      );
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+blogsRouter.get("/:blogId/comments", async (req, res, next) => {
+  try {
+    const blog = await blogPostModel.findById(req.params.blogId);
+    if (blog) {
+      res.send(blog.comments);
+    } else {
+      next(createHttpError(404, `Blog with id ${req.params.blogId} not found`));
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+blogsRouter.get("/:blogId/comments/:commentId", async (req, res, next) => {
+  try {
+    const blog = await blogPostModel.findById(req.params.blogId);
+    if (blog) {
+      console.log("blogComments", blog.comments);
+      const selectedComment = blog.comments.find(
+        (c) => c._id.toString() === req.params.commentId
+      );
+      if (selectedComment) {
+        res.send(selectedComment);
+      } else {
+        next(
+          createHttpError(
+            404,
+            `Comment with id ${req.params.commentId} not found`
+          )
+        );
+      }
+    } else {
+      next(createHttpError(404, `Blog with id ${req.params.blogId} not found`));
     }
   } catch (error) {
     next(error);
