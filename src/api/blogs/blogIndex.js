@@ -157,4 +157,71 @@ blogsRouter.get("/:blogId/comments/:commentId", async (req, res, next) => {
   }
 });
 
+blogsRouter.put("/:blogId/comments/:commentId", async (req, res, next) => {
+  try {
+    const blog = await blogPostModel.findById(req.params.blogId);
+    if (blog) {
+      const index = blog.comments.findIndex(
+        (c) => c._id.toString() === req.params.commentId
+      );
+      if (index !== -1) {
+        blog.comments[index] = {
+          ...blog.comments[index].toObject(),
+          updatedAt: new Date(),
+          ...req.body,
+        };
+        await blog.save();
+        res.send(blog);
+      } else {
+        next(
+          createHttpError(
+            404,
+            `Comment with id ${req.params.commentId} not found`
+          )
+        );
+      }
+    } else {
+      next(createHttpError(404, `Blog with id ${req.params.blogId} not found`));
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+blogsRouter.delete("/:blogId/comments/:commentId", async (req, res, next) => {
+  try {
+    const blog = await blogPostModel.findById(req.params.blogId);
+    if (blog) {
+      const index = blog.comments.findIndex(
+        (c) => c._id.toString() === req.params.commentId
+      );
+      if (index !== -1) {
+        const updatedBlog = await blogPostModel.findByIdAndUpdate(
+          req.params.blogId,
+          { $pull: { comments: { _id: req.params.commentId } } },
+          { new: true, runValidators: true }
+        );
+        if (updatedBlog) {
+          res.send(updatedBlog);
+        } else {
+          next(
+            createHttpError(404, `Blog with id ${req.params.blogId} not found`)
+          );
+        }
+      } else {
+        next(
+          createHttpError(
+            404,
+            `Comment with id ${req.params.commentId} not found`
+          )
+        );
+      }
+    } else {
+      next(createHttpError(404, `Blog with id ${req.params.blogId} not found`));
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default blogsRouter;
