@@ -2,8 +2,20 @@ import Express from "express";
 import createHttpError from "http-errors";
 import blogPostModel from "./model.js";
 import q2m from "query-to-mongo";
+import { v2 as cloudinary } from "cloudinary";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import multer from "multer";
 
 const blogsRouter = Express.Router();
+
+const cloudinaryUploaderCover = multer({
+  storage: new CloudinaryStorage({
+    cloudinary, // cloudinary is going to search for smth in .env vars called process.env.CLOUDINARY_URL
+    params: {
+      folder: "BlogPostCoverImages/blogPosts",
+    },
+  }),
+}).single("cover");
 
 blogsRouter.post("/", async (req, res, next) => {
   try {
@@ -83,6 +95,35 @@ blogsRouter.put("/:blogId", async (req, res, next) => {
     next(error);
   }
 });
+
+blogsRouter.put(
+  "/:blogId/uploadCover",
+  cloudinaryUploaderCover,
+  async (req, res, next) => {
+    try {
+      console.log("FILE:", req.file);
+      const updatedBlogPost = await blogPostModel.findByIdAndUpdate(
+        req.params.blogId,
+        { cover: req.file.path },
+        { new: true, runValidators: true }
+      );
+      console.log("updatedBlogPost", updatedBlogPost);
+
+      if (updatedBlogPost) {
+        res.send(updatedBlogPost);
+      } else {
+        next(
+          createHttpError(
+            404,
+            `Blog post with id ${res.params.blogId} not found!`
+          )
+        );
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 blogsRouter.delete("/:blogId", async (req, res, next) => {
   try {
@@ -205,32 +246,13 @@ blogsRouter.put("/:blogId/comments/:commentId", async (req, res, next) => {
 
 blogsRouter.delete("/:blogId/comments/:commentId", async (req, res, next) => {
   try {
-    const blog = await blogPostModel.findById(req.params.blogId);
-    if (blog) {
-      const index = blog.comments.findIndex(
-        (c) => c._id.toString() === req.params.commentId
-      );
-      if (index !== -1) {
-        const updatedBlog = await blogPostModel.findByIdAndUpdate(
-          req.params.blogId,
-          { $pull: { comments: { _id: req.params.commentId } } },
-          { new: true, runValidators: true }
-        );
-        if (updatedBlog) {
-          res.send(updatedBlog);
-        } else {
-          next(
-            createHttpError(404, `Blog with id ${req.params.blogId} not found`)
-          );
-        }
-      } else {
-        next(
-          createHttpError(
-            404,
-            `Comment with id ${req.params.commentId} not found`
-          )
-        );
-      }
+    const updatedBlog = await blogPostModel.findByIdAndUpdate(
+      req.params.blogId,
+      { $pull: { comments: { _id: req.params.commentId } } },
+      { new: true, runValidators: true }
+    );
+    if (updatedBlog) {
+      res.send(updatedBlog);
     } else {
       next(createHttpError(404, `Blog with id ${req.params.blogId} not found`));
     }
