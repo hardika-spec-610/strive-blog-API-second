@@ -43,20 +43,6 @@ const blogPostSchema = new Schema(
         },
       },
     },
-    // author: {
-    //   name: { type: String, required: true },
-    //   avatar: {
-    //     type: String,
-    //     required: true,
-    //     validate: {
-    //       validator: function (v) {
-    //         const pattern = /\.(jpeg|jpg|gif|png|svg)$/;
-    //         return pattern.test(v);
-    //       },
-    //       message: "Image link must be a valid URL for an image",
-    //     },
-    //   },
-    // },
     author: { type: Schema.Types.ObjectId, ref: "Authors", required: true },
     likes: [{ type: Schema.Types.ObjectId, ref: "Authors" }],
     content: { type: String },

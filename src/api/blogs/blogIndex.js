@@ -5,6 +5,7 @@ import q2m from "query-to-mongo";
 import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
+import AuthorsModel from "../authors/model.js";
 
 const blogsRouter = Express.Router();
 
@@ -264,13 +265,40 @@ blogsRouter.delete("/:blogId/comments/:commentId", async (req, res, next) => {
   }
 });
 
-blogsRouter.get("/:blogId/like", async (req, res, next) => {
+blogsRouter.post("/:blogId/like", async (req, res, next) => {
   try {
-    const foundBlogpost = await blogPostModel.findById(req.params.blogId);
-    if (foundBlogpost) {
-      res.send(foundBlogpost.likes);
+    const { authorId } = req.body;
+    const blog = await blogPostModel.findById(req.params.blogId);
+    if (!blog)
+      return next(
+        createHttpError(404, `Blog with id ${req.params.blogId} not found`)
+      );
+    const likes = await AuthorsModel.findById(authorId);
+    console.log("likes", likes);
+    if (!likes)
+      return next(createHttpError(404, `Author with id ${authorId} not found`));
+    console.log("author", authorId);
+    if (blog.likes.includes(authorId)) {
+      const deleteLikes = await blogPostModel.findOneAndUpdate(
+        { _id: req.params.blogId },
+        { $pull: { likes: authorId } },
+        { new: true, runValidators: true }
+      );
+      res.send({
+        likes: deleteLikes.likes,
+        length: deleteLikes.likes.length,
+      });
     } else {
-      next(createHttpError(404, `Blog with id ${req.params.blogId} not found`));
+      const updatedBlog = await blogPostModel.findOneAndUpdate(
+        { _id: req.params.blogId },
+        { $push: { likes: authorId } },
+        { new: true, runValidators: true, upsert: true }
+      );
+      console.log("updatedBlog", updatedBlog);
+      res.send({
+        updatedBlog,
+        length: updatedBlog.likes.length,
+      });
     }
   } catch (error) {
     next(error);
