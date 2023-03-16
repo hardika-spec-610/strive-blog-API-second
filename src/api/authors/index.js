@@ -1,12 +1,22 @@
 import Express from "express";
 import createHttpError from "http-errors";
-import { AuthorsModel } from "./model.js";
+import AuthorsModel from "./model.js";
 import q2m from "query-to-mongo";
 import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
+import { triggerBadRequest } from "../validation.js";
 
 const authorsRouter = Express.Router();
+
+const cloudinaryUploaderAvatar = multer({
+  storage: new CloudinaryStorage({
+    cloudinary, // cloudinary is going to search for smth in .env vars called process.env.CLOUDINARY_URL
+    params: {
+      folder: "BlogPostAuthorImages/authors",
+    },
+  }),
+}).single("avatar");
 
 authorsRouter.post("/", triggerBadRequest, async (req, res, next) => {
   try {
@@ -39,6 +49,95 @@ authorsRouter.get("/", async (req, res, next) => {
       numberOfPages: Math.ceil(total / mongoQuery.options.limit),
       authors,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+authorsRouter.get("/:authorId", async (req, res, next) => {
+  try {
+    const foundAuthor = await AuthorsModel.findById(req.params.authorId);
+    if (foundAuthor) {
+      res.send(foundAuthor);
+    } else {
+      next(
+        createHttpError(
+          404,
+          `Author with id ${req.params.authorId} is not found`
+        )
+      );
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+authorsRouter.put("/:authorId", async (req, res, next) => {
+  try {
+    const updatedAuthor = await AuthorsModel.findByIdAndUpdate(
+      req.params.authorId,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (updatedAuthor) {
+      res.send(updatedAuthor);
+    } else {
+      next(
+        createHttpError(
+          404,
+          `Author with id ${req.params.authorId} is not found`
+        )
+      );
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+authorsRouter.post(
+  "/:authorId/uploadAvatar",
+  cloudinaryUploaderAvatar,
+  async (req, res, next) => {
+    try {
+      console.log("FILE:", req.file);
+      const updatedAuthor = await AuthorsModel.findByIdAndUpdate(
+        req.params.authorId,
+        { avatar: req.file.path },
+        { new: true, runValidators: true }
+      );
+      console.log("updatedAuthor", updatedAuthor);
+      if (updatedAuthor) {
+        res.send(updatedAuthor);
+      } else {
+        next(
+          createHttpError(
+            404,
+            `Author with id ${req.params.authorId} is not found`
+          )
+        );
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+authorsRouter.delete("/:authorId", async (req, res, next) => {
+  try {
+    const deletedAuthor = await AuthorsModel.findByIdAndDelete(
+      req.params.authorId
+    );
+    if (deletedAuthor) {
+      res.status(204).send();
+    } else {
+      next(
+        createHttpError(
+          404,
+          `Author with id ${req.params.authorId} is not found`
+        )
+      );
+    }
   } catch (error) {
     next(error);
   }

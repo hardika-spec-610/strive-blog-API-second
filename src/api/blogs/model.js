@@ -2,6 +2,16 @@ import mongoose from "mongoose";
 
 const { Schema, model } = mongoose;
 
+const commentSchema = new Schema(
+  {
+    authorName: { type: String, required: true },
+    comment: { type: String, required: true },
+  },
+  {
+    timestamps: true,
+  }
+);
+
 const blogPostSchema = new Schema(
   {
     category: {
@@ -19,13 +29,6 @@ const blogPostSchema = new Schema(
     cover: {
       type: String,
       required: true,
-      //   validate: {
-      //     validator: function (v) {
-      //       const pattern = /\.(jpeg|jpg|gif|png|svg)$/;
-      //       return pattern.test(v);
-      //     },
-      //     message: "Image link must be a valid URL for an image",
-      //   },
     },
     readTime: {
       value: { type: Number, required: true },
@@ -40,29 +43,24 @@ const blogPostSchema = new Schema(
         },
       },
     },
-    author: {
-      name: { type: String, required: true },
-      avatar: {
-        type: String,
-        required: true,
-        validate: {
-          validator: function (v) {
-            const pattern = /\.(jpeg|jpg|gif|png|svg)$/;
-            return pattern.test(v);
-          },
-          message: "Image link must be a valid URL for an image",
-        },
-      },
-    },
+    // author: {
+    //   name: { type: String, required: true },
+    //   avatar: {
+    //     type: String,
+    //     required: true,
+    //     validate: {
+    //       validator: function (v) {
+    //         const pattern = /\.(jpeg|jpg|gif|png|svg)$/;
+    //         return pattern.test(v);
+    //       },
+    //       message: "Image link must be a valid URL for an image",
+    //     },
+    //   },
+    // },
+    author: { type: Schema.Types.ObjectId, ref: "Authors", required: true },
+    likes: [{ type: Schema.Types.ObjectId, ref: "Authors" }],
     content: { type: String },
-    comments: [
-      {
-        authorName: { type: String, required: true },
-        comment: { type: String, required: true },
-        createdAt: Date,
-        updatedAt: Date,
-      },
-    ],
+    comments: [commentSchema],
   },
 
   {

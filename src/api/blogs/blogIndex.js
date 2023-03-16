@@ -39,7 +39,8 @@ blogsRouter.get("/", async (req, res, next) => {
       .find(mongoQuery.criteria, mongoQuery.options.fields)
       .limit(mongoQuery.options.limit)
       .skip(mongoQuery.options.skip)
-      .sort(mongoQuery.options.sort);
+      .sort(mongoQuery.options.sort)
+      .populate({ path: "author", select: "name surname email avatar" });
     const total = await blogPostModel.countDocuments(mongoQuery.criteria);
     // no matter the order of usage of these methods, Mongo will ALWAYS apply SORT then SKIP then LIMIT
     res.send({
@@ -54,7 +55,9 @@ blogsRouter.get("/", async (req, res, next) => {
 });
 blogsRouter.get("/:blogId", async (req, res, next) => {
   try {
-    const blogs = await blogPostModel.findById(req.params.blogId);
+    const blogs = await blogPostModel
+      .findById(req.params.blogId)
+      .populate({ path: "author", select: "name surname email avatar" });
     if (blogs) {
       res.send(blogs);
     } else {
@@ -96,7 +99,7 @@ blogsRouter.put("/:blogId", async (req, res, next) => {
   }
 });
 
-blogsRouter.put(
+blogsRouter.post(
   "/:blogId/uploadCover",
   cloudinaryUploaderCover,
   async (req, res, next) => {
@@ -253,6 +256,19 @@ blogsRouter.delete("/:blogId/comments/:commentId", async (req, res, next) => {
     );
     if (updatedBlog) {
       res.send(updatedBlog);
+    } else {
+      next(createHttpError(404, `Blog with id ${req.params.blogId} not found`));
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+blogsRouter.get("/:blogId/like", async (req, res, next) => {
+  try {
+    const foundBlogpost = await blogPostModel.findById(req.params.blogId);
+    if (foundBlogpost) {
+      res.send(foundBlogpost.likes);
     } else {
       next(createHttpError(404, `Blog with id ${req.params.blogId} not found`));
     }
