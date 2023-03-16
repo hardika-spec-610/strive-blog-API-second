@@ -10,6 +10,7 @@ import {
   notfoundHandler,
 } from "./errorsHandlers.js";
 import mongoose from "mongoose";
+import authorsRouter from "./api/authors/index.js";
 
 const server = Express();
 const port = process.env.PORT || 3001;
@@ -18,7 +19,7 @@ server.use(cors());
 server.use(Express.json()); // If you don't add this line BEFORE the endpoints all request bodies will be UNDEFINED!!!!!!!!!!!!!!!
 
 // ************************** ENDPOINTS ***********************
-
+server.use("/authors", authorsRouter);
 server.use("/blogPosts", blogsRouter);
 
 // ************************* ERROR HANDLERS *******************
