@@ -5,7 +5,7 @@ import q2m from "query-to-mongo";
 import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
-import { triggerBadRequest } from "../validation.js";
+import { checkAuthorsSchema, triggerBadRequest } from "../validation.js";
 import { basicAuthMiddleware } from "../../lib/auth/basic.js";
 import { adminOnlyMiddleware } from "../../lib/auth/admin.js";
 
@@ -20,15 +20,20 @@ const cloudinaryUploaderAvatar = multer({
   }),
 }).single("avatar");
 
-authorsRouter.post("/", triggerBadRequest, async (req, res, next) => {
-  try {
-    const newAuthor = new AuthorsModel(req.body);
-    const { _id } = await newAuthor.save();
-    res.status(201).send({ _id });
-  } catch (error) {
-    next(error);
+authorsRouter.post(
+  "/",
+  checkAuthorsSchema,
+  triggerBadRequest,
+  async (req, res, next) => {
+    try {
+      const newAuthor = new AuthorsModel(req.body);
+      const { _id } = await newAuthor.save();
+      res.status(201).send({ _id });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 authorsRouter.get(
   "/",

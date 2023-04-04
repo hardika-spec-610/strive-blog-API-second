@@ -22,7 +22,7 @@ const authorsSchema = {
   },
   DOB: {
     in: ["body"],
-    isDate: {
+    isString: {
       errorMessage: "DOB is a mandatory field and needs to be a string!",
     },
   },
@@ -32,12 +32,12 @@ const authorsSchema = {
       errorMessage: "avatar is a mandatory field and needs to be a string!",
     },
   },
-  role: {
-    in: ["body"],
-    isString: {
-      errorMessage: "role is a mandatory field and needs to be a string!",
-    },
-  },
+  // role: {
+  //   in: ["body"],
+  //   isString: {
+  //     errorMessage: "role is a mandatory field and needs to be a string!",
+  //   },
+  // },
 };
 
 const blogPostSchema = {

@@ -51,7 +51,7 @@ const authorSchema = new Schema(
     },
     role: {
       type: String,
-      required: true,
+      // required: true,
       enum: ["Admin", "User"],
       default: "User",
     },
