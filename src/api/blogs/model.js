@@ -43,7 +43,7 @@ const blogPostSchema = new Schema(
         },
       },
     },
-    author: { type: Schema.Types.ObjectId, ref: "Authors", required: true },
+    author: [{ type: Schema.Types.ObjectId, ref: "Authors", required: true }],
     likes: [{ type: Schema.Types.ObjectId, ref: "Authors" }],
     content: { type: String },
     comments: [commentSchema],

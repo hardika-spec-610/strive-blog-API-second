@@ -56,6 +56,18 @@ blogsRouter.get("/", basicAuthMiddleware, async (req, res, next) => {
     next(error);
   }
 });
+
+blogsRouter.get("/me/stories", basicAuthMiddleware, async (req, res, next) => {
+  try {
+    const blogs = await blogPostModel
+      .find({ author: { $in: req.author._id } }) // $in operator to find all the blog posts where the authors field contains the ID of the authenticated user
+      .populate("author");
+    res.send(blogs);
+  } catch (error) {
+    next(error);
+  }
+});
+
 blogsRouter.get("/:blogId", basicAuthMiddleware, async (req, res, next) => {
   try {
     const blogs = await blogPostModel

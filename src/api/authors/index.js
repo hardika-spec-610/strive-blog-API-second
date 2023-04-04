@@ -69,6 +69,28 @@ authorsRouter.get("/me", basicAuthMiddleware, async (req, res, next) => {
   }
 });
 
+authorsRouter.put("/me", basicAuthMiddleware, async (req, res, next) => {
+  try {
+    const updatedAuthor = await AuthorsModel.findByIdAndUpdate(
+      req.author._id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    res.send(updatedAuthor);
+  } catch (error) {
+    next(error);
+  }
+});
+
+authorsRouter.delete("/me", basicAuthMiddleware, async (req, res, next) => {
+  try {
+    await AuthorsModel.findOneAndDelete(req.author._id);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
 authorsRouter.get("/:authorId", basicAuthMiddleware, async (req, res, next) => {
   try {
     const foundAuthor = await AuthorsModel.findById(req.params.authorId);
@@ -87,28 +109,33 @@ authorsRouter.get("/:authorId", basicAuthMiddleware, async (req, res, next) => {
   }
 });
 
-authorsRouter.put("/:authorId", basicAuthMiddleware, async (req, res, next) => {
-  try {
-    const updatedAuthor = await AuthorsModel.findByIdAndUpdate(
-      req.params.authorId,
-      req.body,
-      { new: true, runValidators: true }
-    );
-
-    if (updatedAuthor) {
-      res.send(updatedAuthor);
-    } else {
-      next(
-        createHttpError(
-          404,
-          `Author with id ${req.params.authorId} is not found`
-        )
+authorsRouter.put(
+  "/:authorId",
+  basicAuthMiddleware,
+  adminOnlyMiddleware,
+  async (req, res, next) => {
+    try {
+      const updatedAuthor = await AuthorsModel.findByIdAndUpdate(
+        req.params.authorId,
+        req.body,
+        { new: true, runValidators: true }
       );
+
+      if (updatedAuthor) {
+        res.send(updatedAuthor);
+      } else {
+        next(
+          createHttpError(
+            404,
+            `Author with id ${req.params.authorId} is not found`
+          )
+        );
+      }
+    } catch (error) {
+      next(error);
     }
-  } catch (error) {
-    next(error);
   }
-});
+);
 
 authorsRouter.post(
   "/:authorId/uploadAvatar",
@@ -142,6 +169,7 @@ authorsRouter.post(
 authorsRouter.delete(
   "/:authorId",
   basicAuthMiddleware,
+  adminOnlyMiddleware,
   async (req, res, next) => {
     try {
       const deletedAuthor = await AuthorsModel.findByIdAndDelete(
