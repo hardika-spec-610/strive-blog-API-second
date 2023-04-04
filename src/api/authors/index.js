@@ -61,6 +61,14 @@ authorsRouter.get(
   }
 );
 
+authorsRouter.get("/me", basicAuthMiddleware, async (req, res, next) => {
+  try {
+    res.send(req.author);
+  } catch (error) {
+    next(error);
+  }
+});
+
 authorsRouter.get("/:authorId", basicAuthMiddleware, async (req, res, next) => {
   try {
     const foundAuthor = await AuthorsModel.findById(req.params.authorId);

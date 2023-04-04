@@ -6,6 +6,8 @@ import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
 import AuthorsModel from "../authors/model.js";
+import { basicAuthMiddleware } from "../../lib/auth/basic.js";
+// import { adminOnlyMiddleware } from "../../lib/auth/admin.js";
 
 const blogsRouter = Express.Router();
 
@@ -18,7 +20,7 @@ const cloudinaryUploaderCover = multer({
   }),
 }).single("cover");
 
-blogsRouter.post("/", async (req, res, next) => {
+blogsRouter.post("/", basicAuthMiddleware, async (req, res, next) => {
   try {
     const newBlogPost = new blogPostModel(req.body);
     // here it happens validation (thanks to Mongoose) of req.body, if it is not ok Mongoose will throw an error
@@ -30,7 +32,7 @@ blogsRouter.post("/", async (req, res, next) => {
     next(error);
   }
 });
-blogsRouter.get("/", async (req, res, next) => {
+blogsRouter.get("/", basicAuthMiddleware, async (req, res, next) => {
   try {
     console.log("req.query", req.query);
     console.log("q2m", q2m(req.query));
@@ -54,7 +56,7 @@ blogsRouter.get("/", async (req, res, next) => {
     next(error);
   }
 });
-blogsRouter.get("/:blogId", async (req, res, next) => {
+blogsRouter.get("/:blogId", basicAuthMiddleware, async (req, res, next) => {
   try {
     const blogs = await blogPostModel
       .findById(req.params.blogId)
@@ -70,7 +72,8 @@ blogsRouter.get("/:blogId", async (req, res, next) => {
     next(error);
   }
 });
-blogsRouter.put("/:blogId", async (req, res, next) => {
+
+blogsRouter.put("/:blogId", basicAuthMiddleware, async (req, res, next) => {
   try {
     const updatedBlog = await blogPostModel.findByIdAndUpdate(
       req.params.blogId, // WHO
@@ -102,6 +105,7 @@ blogsRouter.put("/:blogId", async (req, res, next) => {
 
 blogsRouter.post(
   "/:blogId/uploadCover",
+  basicAuthMiddleware,
   cloudinaryUploaderCover,
   async (req, res, next) => {
     try {
@@ -129,7 +133,7 @@ blogsRouter.post(
   }
 );
 
-blogsRouter.delete("/:blogId", async (req, res, next) => {
+blogsRouter.delete("/:blogId", basicAuthMiddleware, async (req, res, next) => {
   try {
     const deletedBlog = await blogPostModel.findByIdAndDelete(
       req.params.blogId
@@ -146,163 +150,197 @@ blogsRouter.delete("/:blogId", async (req, res, next) => {
   }
 });
 
-blogsRouter.post("/:blogId/comments", async (req, res, next) => {
-  try {
-    const blog = await blogPostModel.findById(req.params.blogId);
-    if (blog) {
-      const newComment = req.body;
-      const commentToInsert = {
-        ...newComment,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      console.log("commentToInsert", commentToInsert);
-      const updatedBlog = await blogPostModel.findByIdAndUpdate(
+blogsRouter.post(
+  "/:blogId/comments",
+  basicAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const blog = await blogPostModel.findById(req.params.blogId);
+      if (blog) {
+        const newComment = req.body;
+        const commentToInsert = {
+          ...newComment,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        console.log("commentToInsert", commentToInsert);
+        const updatedBlog = await blogPostModel.findByIdAndUpdate(
+          req.params.blogId,
+          {
+            $push: { comments: commentToInsert },
+          },
+          { new: true, runValidators: true }
+        );
+        console.log("updatedBlog", updatedBlog);
+        if (updatedBlog) {
+          res.send(updatedBlog);
+        } else {
+          next(createHttpError(404, `Blog has not comments`));
+        }
+      } else {
+        next(
+          createHttpError(404, `Blog with id ${req.params.blogId} not found!`)
+        );
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+blogsRouter.get(
+  "/:blogId/comments",
+  basicAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const blog = await blogPostModel.findById(req.params.blogId);
+      if (blog) {
+        res.send(blog.comments);
+      } else {
+        next(
+          createHttpError(404, `Blog with id ${req.params.blogId} not found`)
+        );
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+blogsRouter.get(
+  "/:blogId/comments/:commentId",
+  basicAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const blog = await blogPostModel.findById(req.params.blogId);
+      if (blog) {
+        console.log("blogComments", blog.comments);
+        const selectedComment = blog.comments.find(
+          (c) => c._id.toString() === req.params.commentId
+        );
+        if (selectedComment) {
+          res.send(selectedComment);
+        } else {
+          next(
+            createHttpError(
+              404,
+              `Comment with id ${req.params.commentId} not found`
+            )
+          );
+        }
+      } else {
+        next(
+          createHttpError(404, `Blog with id ${req.params.blogId} not found`)
+        );
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+blogsRouter.put(
+  "/:blogId/comments/:commentId",
+  basicAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const blog = await blogPostModel.findById(req.params.blogId);
+      if (blog) {
+        const index = blog.comments.findIndex(
+          (c) => c._id.toString() === req.params.commentId
+        );
+        if (index !== -1) {
+          blog.comments[index] = {
+            ...blog.comments[index].toObject(),
+            updatedAt: new Date(),
+            ...req.body,
+          };
+          await blog.save();
+          res.send(blog);
+        } else {
+          next(
+            createHttpError(
+              404,
+              `Comment with id ${req.params.commentId} not found`
+            )
+          );
+        }
+      } else {
+        next(
+          createHttpError(404, `Blog with id ${req.params.blogId} not found`)
+        );
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+blogsRouter.delete(
+  "/:blogId/comments/:commentId",
+  basicAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const updatedBlog = await blogPostModel.findByIdAndDelete(
         req.params.blogId,
-        {
-          $push: { comments: commentToInsert },
-        },
+        { $pull: { comments: { _id: req.params.commentId } } },
         { new: true, runValidators: true }
       );
-      console.log("updatedBlog", updatedBlog);
       if (updatedBlog) {
         res.send(updatedBlog);
       } else {
-        next(createHttpError(404, `Blog has not comments`));
-      }
-    } else {
-      next(
-        createHttpError(404, `Blog with id ${req.params.blogId} not found!`)
-      );
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-blogsRouter.get("/:blogId/comments", async (req, res, next) => {
-  try {
-    const blog = await blogPostModel.findById(req.params.blogId);
-    if (blog) {
-      res.send(blog.comments);
-    } else {
-      next(createHttpError(404, `Blog with id ${req.params.blogId} not found`));
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-blogsRouter.get("/:blogId/comments/:commentId", async (req, res, next) => {
-  try {
-    const blog = await blogPostModel.findById(req.params.blogId);
-    if (blog) {
-      console.log("blogComments", blog.comments);
-      const selectedComment = blog.comments.find(
-        (c) => c._id.toString() === req.params.commentId
-      );
-      if (selectedComment) {
-        res.send(selectedComment);
-      } else {
         next(
-          createHttpError(
-            404,
-            `Comment with id ${req.params.commentId} not found`
-          )
+          createHttpError(404, `Blog with id ${req.params.blogId} not found`)
         );
       }
-    } else {
-      next(createHttpError(404, `Blog with id ${req.params.blogId} not found`));
+    } catch (error) {
+      next(error);
     }
-  } catch (error) {
-    next(error);
   }
-});
+);
 
-blogsRouter.put("/:blogId/comments/:commentId", async (req, res, next) => {
-  try {
-    const blog = await blogPostModel.findById(req.params.blogId);
-    if (blog) {
-      const index = blog.comments.findIndex(
-        (c) => c._id.toString() === req.params.commentId
-      );
-      if (index !== -1) {
-        blog.comments[index] = {
-          ...blog.comments[index].toObject(),
-          updatedAt: new Date(),
-          ...req.body,
-        };
-        await blog.save();
-        res.send(blog);
-      } else {
-        next(
-          createHttpError(
-            404,
-            `Comment with id ${req.params.commentId} not found`
-          )
+blogsRouter.post(
+  "/:blogId/like",
+  basicAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const { authorId } = req.body;
+      const blog = await blogPostModel.findById(req.params.blogId);
+      if (!blog)
+        return next(
+          createHttpError(404, `Blog with id ${req.params.blogId} not found`)
         );
+      const likes = await AuthorsModel.findById(authorId);
+      console.log("likes", likes);
+      if (!likes)
+        return next(
+          createHttpError(404, `Author with id ${authorId} not found`)
+        );
+      console.log("author", authorId);
+      if (blog.likes.includes(authorId)) {
+        const deleteLikes = await blogPostModel.findOneAndUpdate(
+          { _id: req.params.blogId },
+          { $pull: { likes: authorId } },
+          { new: true, runValidators: true }
+        );
+        res.send({
+          likes: deleteLikes.likes,
+          length: deleteLikes.likes.length,
+        });
+      } else {
+        const updatedBlog = await blogPostModel.findOneAndUpdate(
+          { _id: req.params.blogId },
+          { $push: { likes: authorId } },
+          { new: true, runValidators: true, upsert: true }
+        );
+        console.log("updatedBlog", updatedBlog);
+        res.send({
+          updatedBlog,
+          length: updatedBlog.likes.length,
+        });
       }
-    } else {
-      next(createHttpError(404, `Blog with id ${req.params.blogId} not found`));
+    } catch (error) {
+      next(error);
     }
-  } catch (error) {
-    next(error);
   }
-});
-
-blogsRouter.delete("/:blogId/comments/:commentId", async (req, res, next) => {
-  try {
-    const updatedBlog = await blogPostModel.findByIdAndDelete(
-      req.params.blogId,
-      { $pull: { comments: { _id: req.params.commentId } } },
-      { new: true, runValidators: true }
-    );
-    if (updatedBlog) {
-      res.send(updatedBlog);
-    } else {
-      next(createHttpError(404, `Blog with id ${req.params.blogId} not found`));
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-
-blogsRouter.post("/:blogId/like", async (req, res, next) => {
-  try {
-    const { authorId } = req.body;
-    const blog = await blogPostModel.findById(req.params.blogId);
-    if (!blog)
-      return next(
-        createHttpError(404, `Blog with id ${req.params.blogId} not found`)
-      );
-    const likes = await AuthorsModel.findById(authorId);
-    console.log("likes", likes);
-    if (!likes)
-      return next(createHttpError(404, `Author with id ${authorId} not found`));
-    console.log("author", authorId);
-    if (blog.likes.includes(authorId)) {
-      const deleteLikes = await blogPostModel.findOneAndUpdate(
-        { _id: req.params.blogId },
-        { $pull: { likes: authorId } },
-        { new: true, runValidators: true }
-      );
-      res.send({
-        likes: deleteLikes.likes,
-        length: deleteLikes.likes.length,
-      });
-    } else {
-      const updatedBlog = await blogPostModel.findOneAndUpdate(
-        { _id: req.params.blogId },
-        { $push: { likes: authorId } },
-        { new: true, runValidators: true, upsert: true }
-      );
-      console.log("updatedBlog", updatedBlog);
-      res.send({
-        updatedBlog,
-        length: updatedBlog.likes.length,
-      });
-    }
-  } catch (error) {
-    next(error);
-  }
-});
+);
 
 export default blogsRouter;
