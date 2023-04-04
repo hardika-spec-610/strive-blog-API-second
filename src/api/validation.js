@@ -1,6 +1,45 @@
 import { checkSchema, validationResult } from "express-validator";
 import createHttpError from "http-errors";
 
+const authorsSchema = {
+  name: {
+    in: ["body"],
+    isString: {
+      errorMessage: "name is a mandatory field and needs to be a string!",
+    },
+  },
+  surname: {
+    in: ["body"],
+    isString: {
+      errorMessage: "surname is a mandatory field and needs to be a string!",
+    },
+  },
+  password: {
+    in: ["body"],
+    isString: {
+      errorMessage: "password is a mandatory field and needs to be a string!",
+    },
+  },
+  DOB: {
+    in: ["body"],
+    isDate: {
+      errorMessage: "DOB is a mandatory field and needs to be a string!",
+    },
+  },
+  avatar: {
+    in: ["body"],
+    isString: {
+      errorMessage: "avatar is a mandatory field and needs to be a string!",
+    },
+  },
+  role: {
+    in: ["body"],
+    isString: {
+      errorMessage: "role is a mandatory field and needs to be a string!",
+    },
+  },
+};
+
 const blogPostSchema = {
   category: {
     in: ["body"],
@@ -50,6 +89,7 @@ const commentSchema = {
 };
 
 export const checkBlogsSchema = checkSchema(blogPostSchema); // this function creates a middleware
+export const checkAuthorsSchema = checkSchema(authorsSchema); // this function creates a middleware
 export const checkCommentSchema = checkSchema(commentSchema);
 
 export const triggerBadRequest = (req, res, next) => {

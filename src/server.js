@@ -8,6 +8,7 @@ import {
   badRequestHandler,
   unauthorizedHandler,
   notfoundHandler,
+  forbiddenErrorHandler,
 } from "./errorsHandlers.js";
 import mongoose from "mongoose";
 import authorsRouter from "./api/authors/index.js";
@@ -25,6 +26,7 @@ server.use("/blogPosts", blogsRouter);
 // ************************* ERROR HANDLERS *******************
 server.use(badRequestHandler); // 400
 server.use(unauthorizedHandler); // 401
+server.use(forbiddenErrorHandler); // 403
 server.use(notfoundHandler); // 404
 server.use(genericErrorHandler); // 500 (this should ALWAYS be the last one)
 

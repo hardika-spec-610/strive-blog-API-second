@@ -250,7 +250,7 @@ blogsRouter.put("/:blogId/comments/:commentId", async (req, res, next) => {
 
 blogsRouter.delete("/:blogId/comments/:commentId", async (req, res, next) => {
   try {
-    const updatedBlog = await blogPostModel.findByIdAndUpdate(
+    const updatedBlog = await blogPostModel.findByIdAndDelete(
       req.params.blogId,
       { $pull: { comments: { _id: req.params.commentId } } },
       { new: true, runValidators: true }
