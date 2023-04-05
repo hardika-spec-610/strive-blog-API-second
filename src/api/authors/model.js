@@ -84,7 +84,7 @@ authorSchema.methods.toJSON = function () {
   delete currentAuthor.password;
   // delete currentAuthor.createdAt
   // delete currentAuthor.updatedAt
-  // delete currentAuthor.__v
+  delete currentAuthor.__v;
   return currentAuthor;
 };
 

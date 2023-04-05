@@ -6,8 +6,10 @@ import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
 import { checkAuthorsSchema, triggerBadRequest } from "../validation.js";
-import { basicAuthMiddleware } from "../../lib/auth/basic.js";
+// import { basicAuthMiddleware } from "../../lib/auth/basic.js";
 import { adminOnlyMiddleware } from "../../lib/auth/admin.js";
+import { JWTAuthMiddleware } from "../../lib/auth/jwt.js";
+import { createAccessToken } from "../../lib/auth/tools.js";
 
 const authorsRouter = Express.Router();
 
@@ -37,7 +39,7 @@ authorsRouter.post(
 
 authorsRouter.get(
   "/",
-  basicAuthMiddleware,
+  JWTAuthMiddleware,
   adminOnlyMiddleware,
   async (req, res, next) => {
     try {
@@ -66,15 +68,17 @@ authorsRouter.get(
   }
 );
 
-authorsRouter.get("/me", basicAuthMiddleware, async (req, res, next) => {
+authorsRouter.get("/me", JWTAuthMiddleware, async (req, res, next) => {
   try {
-    res.send(req.author);
+    const author = await AuthorsModel.findById(req.author._id);
+    res.send(author);
+    // res.send(req.author);
   } catch (error) {
     next(error);
   }
 });
 
-authorsRouter.put("/me", basicAuthMiddleware, async (req, res, next) => {
+authorsRouter.put("/me", JWTAuthMiddleware, async (req, res, next) => {
   try {
     const updatedAuthor = await AuthorsModel.findByIdAndUpdate(
       req.author._id,
@@ -87,7 +91,7 @@ authorsRouter.put("/me", basicAuthMiddleware, async (req, res, next) => {
   }
 });
 
-authorsRouter.delete("/me", basicAuthMiddleware, async (req, res, next) => {
+authorsRouter.delete("/me", JWTAuthMiddleware, async (req, res, next) => {
   try {
     await AuthorsModel.findOneAndDelete(req.author._id);
     res.status(204).send();
@@ -96,7 +100,7 @@ authorsRouter.delete("/me", basicAuthMiddleware, async (req, res, next) => {
   }
 });
 
-authorsRouter.get("/:authorId", basicAuthMiddleware, async (req, res, next) => {
+authorsRouter.get("/:authorId", JWTAuthMiddleware, async (req, res, next) => {
   try {
     const foundAuthor = await AuthorsModel.findById(req.params.authorId);
     if (foundAuthor) {
@@ -116,7 +120,7 @@ authorsRouter.get("/:authorId", basicAuthMiddleware, async (req, res, next) => {
 
 authorsRouter.put(
   "/:authorId",
-  basicAuthMiddleware,
+  JWTAuthMiddleware,
   adminOnlyMiddleware,
   async (req, res, next) => {
     try {
@@ -144,7 +148,7 @@ authorsRouter.put(
 
 authorsRouter.post(
   "/:authorId/uploadAvatar",
-  basicAuthMiddleware,
+  JWTAuthMiddleware,
   cloudinaryUploaderAvatar,
   async (req, res, next) => {
     try {
@@ -173,7 +177,7 @@ authorsRouter.post(
 
 authorsRouter.delete(
   "/:authorId",
-  basicAuthMiddleware,
+  JWTAuthMiddleware,
   adminOnlyMiddleware,
   async (req, res, next) => {
     try {
@@ -195,5 +199,49 @@ authorsRouter.delete(
     }
   }
 );
+
+authorsRouter.post(
+  "/register",
+  checkAuthorsSchema,
+  triggerBadRequest,
+  async (req, res, next) => {
+    try {
+      const { name, surname, email, password, DOB, avatar } = req.body;
+      // Check if user already exists
+      const existingUser = await AuthorsModel.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({ error: "User already exists" });
+      }
+      const newAuthor = new AuthorsModel(req.body);
+      const { _id } = await newAuthor.save();
+      res.status(201).send({ _id });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+authorsRouter.post("/login", async (req, res, next) => {
+  try {
+    // 1. Obtain credentials from req.body
+    const { email, password } = req.body;
+
+    // 2. Verify the credentials
+    const author = await AuthorsModel.checkCredentials(email, password);
+
+    if (author) {
+      // 3.1 If credentials are fine --> create an access token (JWT) and send it back as a response
+      const payload = { _id: author._id, role: author.role };
+      const accessToken = await createAccessToken(payload);
+
+      res.send({ accessToken });
+    } else {
+      // 3.2 If they are not --> trigger a 401 error
+      next(createHttpError(401, "Credentials are not ok!"));
+    }
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default authorsRouter;
