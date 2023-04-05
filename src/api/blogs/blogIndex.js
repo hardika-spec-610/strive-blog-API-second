@@ -6,7 +6,8 @@ import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
 import AuthorsModel from "../authors/model.js";
-import { basicAuthMiddleware } from "../../lib/auth/basic.js";
+import { JWTAuthMiddleware } from "../../lib/auth/jwt.js";
+// import { basicAuthMiddleware } from "../../lib/auth/basic.js";
 // import { adminOnlyMiddleware } from "../../lib/auth/admin.js";
 
 const blogsRouter = Express.Router();
@@ -20,7 +21,7 @@ const cloudinaryUploaderCover = multer({
   }),
 }).single("cover");
 
-blogsRouter.post("/", basicAuthMiddleware, async (req, res, next) => {
+blogsRouter.post("/", JWTAuthMiddleware, async (req, res, next) => {
   try {
     const newBlogPost = new blogPostModel(req.body);
     // here it happens validation (thanks to Mongoose) of req.body, if it is not ok Mongoose will throw an error
@@ -32,7 +33,7 @@ blogsRouter.post("/", basicAuthMiddleware, async (req, res, next) => {
     next(error);
   }
 });
-blogsRouter.get("/", basicAuthMiddleware, async (req, res, next) => {
+blogsRouter.get("/", JWTAuthMiddleware, async (req, res, next) => {
   try {
     console.log("req.query", req.query);
     console.log("q2m", q2m(req.query));
@@ -57,7 +58,7 @@ blogsRouter.get("/", basicAuthMiddleware, async (req, res, next) => {
   }
 });
 
-blogsRouter.get("/me/stories", basicAuthMiddleware, async (req, res, next) => {
+blogsRouter.get("/me/stories", JWTAuthMiddleware, async (req, res, next) => {
   try {
     const blogs = await blogPostModel
       .find({ author: { $in: req.author._id } }) // $in operator to find all the blog posts where the authors field contains the ID of the authenticated user
@@ -68,7 +69,7 @@ blogsRouter.get("/me/stories", basicAuthMiddleware, async (req, res, next) => {
   }
 });
 
-blogsRouter.get("/:blogId", basicAuthMiddleware, async (req, res, next) => {
+blogsRouter.get("/:blogId", JWTAuthMiddleware, async (req, res, next) => {
   try {
     const blogs = await blogPostModel
       .findById(req.params.blogId)
@@ -85,7 +86,7 @@ blogsRouter.get("/:blogId", basicAuthMiddleware, async (req, res, next) => {
   }
 });
 
-blogsRouter.put("/:blogId", basicAuthMiddleware, async (req, res, next) => {
+blogsRouter.put("/:blogId", JWTAuthMiddleware, async (req, res, next) => {
   try {
     const updatedBlog = await blogPostModel.findByIdAndUpdate(
       req.params.blogId, // WHO
@@ -117,7 +118,7 @@ blogsRouter.put("/:blogId", basicAuthMiddleware, async (req, res, next) => {
 
 blogsRouter.post(
   "/:blogId/uploadCover",
-  basicAuthMiddleware,
+  JWTAuthMiddleware,
   cloudinaryUploaderCover,
   async (req, res, next) => {
     try {
@@ -145,7 +146,7 @@ blogsRouter.post(
   }
 );
 
-blogsRouter.delete("/:blogId", basicAuthMiddleware, async (req, res, next) => {
+blogsRouter.delete("/:blogId", JWTAuthMiddleware, async (req, res, next) => {
   try {
     const deletedBlog = await blogPostModel.findByIdAndDelete(
       req.params.blogId
@@ -164,7 +165,7 @@ blogsRouter.delete("/:blogId", basicAuthMiddleware, async (req, res, next) => {
 
 blogsRouter.post(
   "/:blogId/comments",
-  basicAuthMiddleware,
+  JWTAuthMiddleware,
   async (req, res, next) => {
     try {
       const blog = await blogPostModel.findById(req.params.blogId);
@@ -201,7 +202,7 @@ blogsRouter.post(
 );
 blogsRouter.get(
   "/:blogId/comments",
-  basicAuthMiddleware,
+  JWTAuthMiddleware,
   async (req, res, next) => {
     try {
       const blog = await blogPostModel.findById(req.params.blogId);
@@ -219,7 +220,7 @@ blogsRouter.get(
 );
 blogsRouter.get(
   "/:blogId/comments/:commentId",
-  basicAuthMiddleware,
+  JWTAuthMiddleware,
   async (req, res, next) => {
     try {
       const blog = await blogPostModel.findById(req.params.blogId);
@@ -251,7 +252,7 @@ blogsRouter.get(
 
 blogsRouter.put(
   "/:blogId/comments/:commentId",
-  basicAuthMiddleware,
+  JWTAuthMiddleware,
   async (req, res, next) => {
     try {
       const blog = await blogPostModel.findById(req.params.blogId);
@@ -288,7 +289,7 @@ blogsRouter.put(
 
 blogsRouter.delete(
   "/:blogId/comments/:commentId",
-  basicAuthMiddleware,
+  JWTAuthMiddleware,
   async (req, res, next) => {
     try {
       const updatedBlog = await blogPostModel.findByIdAndDelete(
@@ -309,50 +310,44 @@ blogsRouter.delete(
   }
 );
 
-blogsRouter.post(
-  "/:blogId/like",
-  basicAuthMiddleware,
-  async (req, res, next) => {
-    try {
-      const { authorId } = req.body;
-      const blog = await blogPostModel.findById(req.params.blogId);
-      if (!blog)
-        return next(
-          createHttpError(404, `Blog with id ${req.params.blogId} not found`)
-        );
-      const likes = await AuthorsModel.findById(authorId);
-      console.log("likes", likes);
-      if (!likes)
-        return next(
-          createHttpError(404, `Author with id ${authorId} not found`)
-        );
-      console.log("author", authorId);
-      if (blog.likes.includes(authorId)) {
-        const deleteLikes = await blogPostModel.findOneAndUpdate(
-          { _id: req.params.blogId },
-          { $pull: { likes: authorId } },
-          { new: true, runValidators: true }
-        );
-        res.send({
-          likes: deleteLikes.likes,
-          length: deleteLikes.likes.length,
-        });
-      } else {
-        const updatedBlog = await blogPostModel.findOneAndUpdate(
-          { _id: req.params.blogId },
-          { $push: { likes: authorId } },
-          { new: true, runValidators: true, upsert: true }
-        );
-        console.log("updatedBlog", updatedBlog);
-        res.send({
-          updatedBlog,
-          length: updatedBlog.likes.length,
-        });
-      }
-    } catch (error) {
-      next(error);
+blogsRouter.post("/:blogId/like", JWTAuthMiddleware, async (req, res, next) => {
+  try {
+    const { authorId } = req.body;
+    const blog = await blogPostModel.findById(req.params.blogId);
+    if (!blog)
+      return next(
+        createHttpError(404, `Blog with id ${req.params.blogId} not found`)
+      );
+    const likes = await AuthorsModel.findById(authorId);
+    console.log("likes", likes);
+    if (!likes)
+      return next(createHttpError(404, `Author with id ${authorId} not found`));
+    console.log("author", authorId);
+    if (blog.likes.includes(authorId)) {
+      const deleteLikes = await blogPostModel.findOneAndUpdate(
+        { _id: req.params.blogId },
+        { $pull: { likes: authorId } },
+        { new: true, runValidators: true }
+      );
+      res.send({
+        likes: deleteLikes.likes,
+        length: deleteLikes.likes.length,
+      });
+    } else {
+      const updatedBlog = await blogPostModel.findOneAndUpdate(
+        { _id: req.params.blogId },
+        { $push: { likes: authorId } },
+        { new: true, runValidators: true, upsert: true }
+      );
+      console.log("updatedBlog", updatedBlog);
+      res.send({
+        updatedBlog,
+        length: updatedBlog.likes.length,
+      });
     }
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 export default blogsRouter;

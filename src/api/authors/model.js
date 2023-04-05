@@ -40,7 +40,7 @@ const authorSchema = new Schema(
     },
     avatar: {
       type: String,
-      required: true,
+      // required: true,
       validate: {
         validator: function (v) {
           const pattern = /\.(jpeg|jpg|gif|png|svg)$/;
