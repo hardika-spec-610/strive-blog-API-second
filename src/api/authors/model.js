@@ -28,7 +28,7 @@ const authorSchema = new Schema(
     },
     DOB: {
       type: Date,
-      required: true,
+      // required: true,
       validate: {
         validator: function (v) {
           const maxDate = new Date();

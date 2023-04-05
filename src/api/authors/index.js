@@ -200,26 +200,21 @@ authorsRouter.delete(
   }
 );
 
-authorsRouter.post(
-  "/register",
-  checkAuthorsSchema,
-  triggerBadRequest,
-  async (req, res, next) => {
-    try {
-      const { name, surname, email, password, DOB, avatar } = req.body;
-      // Check if user already exists
-      const existingUser = await AuthorsModel.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ error: "User already exists" });
-      }
-      const newAuthor = new AuthorsModel(req.body);
-      const { _id } = await newAuthor.save();
-      res.status(201).send({ _id });
-    } catch (error) {
-      next(error);
-    }
+authorsRouter.post("/register", async (req, res, next) => {
+  try {
+    // const { name, surname, email, password, DOB, avatar } = req.body;
+    // Check if user already exists
+    // const existingUser = await AuthorsModel.findOne({ email });
+    // if (existingUser) {
+    //   return res.status(400).json({ error: "User already exists" });
+    // }
+    const newAuthor = new AuthorsModel(req.body);
+    const { _id } = await newAuthor.save();
+    res.status(201).send({ _id });
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 authorsRouter.post("/login", async (req, res, next) => {
   try {
