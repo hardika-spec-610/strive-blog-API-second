@@ -24,7 +24,7 @@ const authorSchema = new Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: false,
     },
     DOB: {
       type: Date,
@@ -55,6 +55,8 @@ const authorSchema = new Schema(
       enum: ["Admin", "User"],
       default: "User",
     },
+    refreshToken: { type: String },
+    googleId: { type: String },
   },
 
   {

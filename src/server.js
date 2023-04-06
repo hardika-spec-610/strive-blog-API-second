@@ -11,13 +11,17 @@ import {
   forbiddenErrorHandler,
 } from "./errorsHandlers.js";
 import mongoose from "mongoose";
+import passport from "passport";
 import authorsRouter from "./api/authors/index.js";
+import googleStrategy from "./lib/auth/googleOauth.js";
 
 const server = Express();
 const port = process.env.PORT || 3001;
+passport.use("google", googleStrategy); // Do not forget to inform Passport that we want to use Google Strategy!
 // ************************** MIDDLEWARES *********************
 server.use(cors());
 server.use(Express.json()); // If you don't add this line BEFORE the endpoints all request bodies will be UNDEFINED!!!!!!!!!!!!!!!
+server.use(passport.initialize()); // Do not forget to inform Express that we are using Passport!
 
 // ************************** ENDPOINTS ***********************
 server.use("/authors", authorsRouter);

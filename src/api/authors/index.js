@@ -10,8 +10,30 @@ import { checkAuthorsSchema, triggerBadRequest } from "../validation.js";
 import { adminOnlyMiddleware } from "../../lib/auth/admin.js";
 import { JWTAuthMiddleware } from "../../lib/auth/jwt.js";
 import { createAccessToken } from "../../lib/auth/tools.js";
+import passport from "passport";
 
 const authorsRouter = Express.Router();
+
+authorsRouter.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+authorsRouter.get(
+  "/auth/google/callback",
+  passport.authenticate("google", { session: false }),
+  (req, res, next) => {
+    // session:false option tells the middleware to not use sessions for authentication.
+    //By default, passport.js will use sessions to maintain user authentication across requests.
+    //However, there may be cases where you want to disable sessions, such as when implementing stateless authentication using tokens.
+    try {
+      // console.log("accessToken", req.user.accessToken);
+      res.redirect(`${process.env.FE_URL}?accessToken=${req.user.accessToken}`);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 const cloudinaryUploaderAvatar = multer({
   storage: new CloudinaryStorage({
