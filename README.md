@@ -32,7 +32,7 @@ Finally, start the app:
 npm start
 ```
 
-The app should now be running on [http://localhost:3000](http://localhost:3000).
+The app should now be running on [http://localhost:3001](http://localhost:3001).
 
 ## Technologies Used in Backend
 
